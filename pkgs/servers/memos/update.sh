@@ -1,56 +1,70 @@
-#!/usr/bin/env nix-shell
-#!nix-shell -i bash -p nix wget nix-prefetch-github moreutils jq prefetch-npm-deps nodejs
-
+#! /usr/bin/env nix-shell
+#! nix-shell -I nixpkgs=./. -i bash -p coreutils gnused curl nix jq nodejs
 set -euo pipefail
 
-TARGET_VERSION_REMOTE=$(curl -s https://api.github.com/repos/usememos/memos/releases/latest | jq -r ".tag_name")
-TARGET_VERSION=${TARGET_VERSION_REMOTE#v}
+DRV_DIR="$(dirname "${BASH_SOURCE[0]}")"
+DRV_DIR=$(realpath "$DRV_DIR")
+NIXPKGS_ROOT="$DRV_DIR/../../.."
+NIXPKGS_ROOT=$(realpath "$NIXPKGS_ROOT")
 
-if [[ "$UPDATE_NIX_OLD_VERSION" == "$TARGET_VERSION" ]]; then
-  echo "memos is up-to-date: ${UPDATE_NIX_OLD_VERSION}"
-  exit 0
+instantiateClean() {
+    nix-instantiate --eval --strict -E "with import ./. {}; $1" | cut -d\" -f2
+}
+fetchNewHash() {
+    set +eo pipefail
+    HASH="$(nix-build -A "$1" 2>&1 >/dev/null | grep "got:" | cut -d':' -f2 | sed 's| ||g')"
+    set -eo pipefail
+    if [ -z "$HASH" ]; then
+        echo "Could not generate hash" >&2
+        exit 1
+    else
+        echo "$HASH"
+    fi
+}
+replace() {
+    sed -i "s@$1@$2@g" "$3"
+}
+
+# provide a github token so you don't get rate limited
+# if you use gh cli you can use:
+#     `export GITHUB_TOKEN="$(cat ~/.config/gh/config.yml | yq '.hosts."github.com".oauth_token' -r)"`
+# or just set your token by hand:
+#     `read -s -p "Enter your token: " GITHUB_TOKEN; export GITHUB_TOKEN`
+#     (we use read so it doesn't show in our shell history and in secret mode so the token you paste isn't visible)
+if [ -z "${GITHUB_TOKEN:-}" ]; then
+    echo "no GITHUB_TOKEN provided - you could meet API request limiting" >&2
 fi
 
-extractVendorHash() {
-  original="${1?original hash missing}"
-  result="$(nix-build -A memos.goModules 2>&1 | tail -n3 | grep 'got:' | cut -d: -f2- | xargs echo || true)"
-  [ -z "$result" ] && { echo "$original"; } || { echo "$result"; }
-}
+OLD_VERSION=$(instantiateClean "memos.version")
 
-replaceHash() {
-  old="${1?old hash missing}"
-  new="${2?new hash missing}"
-  awk -v OLD="$old" -v NEW="$new" '{
-    if (i=index($0, OLD)) {
-      $0 = substr($0, 1, i-1) NEW substr($0, i+length(OLD));
-    }
-    print $0;
-  }' ./pkgs/servers/memos/default.nix | sponge ./pkgs/servers/memos/default.nix
-}
+LATEST_TAG=$(curl ${GITHUB_TOKEN:+" -u \":$GITHUB_TOKEN\""} --silent https://api.github.com/repos/usememos/memos/releases/latest | jq -r '.tag_name')
+NEW_VERSION="$(echo "${LATEST_TAG}" | sed 's/^v//')"
 
-# change version number
-sed -e "s/version =.*;/version = \"$TARGET_VERSION\";/g" \
-    -i ./pkgs/servers/memos/default.nix
+if [[ "$OLD_VERSION" == "$NEW_VERSION" ]]; then
+    echo "already up to date"
+    exit
+fi
 
-# update hash
-SRC_HASH="$(nix-instantiate --eval -A memos.src.outputHash | tr -d '"')"
-NEW_HASH="$(nix-prefetch-github usememos memos --rev v$TARGET_VERSION | jq -r .hash)"
+TMP_HASH="sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+echo "New version $NEW_VERSION"
+replace "$OLD_VERSION" "$NEW_VERSION" "$DRV_DIR/sources.nix"
+OLD_SRC_HASH="$(instantiateClean memos.src.outputHash)"
+echo "Old src hash $OLD_SRC_HASH"
+replace "$OLD_SRC_HASH" "$TMP_HASH" "$DRV_DIR/sources.nix"
+NEW_SRC_HASH="$(fetchNewHash memos.src)"
+echo "New src hash $NEW_SRC_HASH"
+replace "$TMP_HASH" "$NEW_SRC_HASH" "$DRV_DIR/sources.nix"
 
-replaceHash "$SRC_HASH" "$NEW_HASH"
+OLD_PNPM_DEPS_HASH="$(instantiateClean memos.web.pnpmDeps.outputHash)"
+echo "Old pnpm deps hash $OLD_PNPM_DEPS_HASH"
+replace "$OLD_PNPM_DEPS_HASH" "$TMP_HASH" "$DRV_DIR/sources.nix"
+NEW_PNPM_DEPS_HASH="$(fetchNewHash memos.web)"
+echo "New pnpm deps hash $NEW_PNPM_DEPS_HASH"
+replace "$TMP_HASH" "$NEW_PNPM_DEPS_HASH" "$DRV_DIR/sources.nix"
 
-GO_HASH="$(nix-instantiate --eval -A memos.vendorHash | tr -d '"')"
-EMPTY_HASH="$(nix-instantiate --eval -A lib.fakeHash | tr -d '"')"
-replaceHash "$GO_HASH" "$EMPTY_HASH"
-replaceHash "$EMPTY_HASH" "$(extractVendorHash "$GO_HASH")"
-
-# update src yarn lock
-SRC_FILE_BASE="https://raw.githubusercontent.com/usememos/memos/v$TARGET_VERSION"
-
-trap 'rm -rf ./pkgs/servers/memos/package.json' EXIT
-pushd ./pkgs/servers/memos
-wget -q "$SRC_FILE_BASE/web/package.json"
-npm install --package-lock-only
-NPM_HASH=$(prefetch-npm-deps ./package-lock.json)
-popd
-
-sed -i -E -e "s#npmDepsHash = \".*\"#npmDepsHash = \"$NPM_HASH\"#" ./pkgs/servers/memos/default.nix
+OLD_GO_VENDOR_HASH="$(instantiateClean memos.vendorHash)"
+echo "Old go vendor hash $OLD_GO_VENDOR_HASH"
+replace "$OLD_GO_VENDOR_HASH" "$TMP_HASH" "$DRV_DIR/sources.nix"
+NEW_GO_VENDOR_HASH="$(fetchNewHash memos.goModules)"
+echo "New go vendor hash $NEW_GO_VENDOR_HASH"
+replace "$TMP_HASH" "$NEW_GO_VENDOR_HASH" "$DRV_DIR/sources.nix"

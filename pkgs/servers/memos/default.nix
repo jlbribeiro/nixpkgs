@@ -1,60 +1,51 @@
 {
-  fetchFromGitHub,
-  buildGoModule,
-  jq,
-  buildNpmPackage,
   lib,
-  makeWrapper,
+  callPackage,
+  buildGoModule,
+  fetchFromGitHub,
 }:
 
 let
-  version = "0.13.2";
-  src = fetchFromGitHub {
-    owner = "usememos";
-    repo = "memos";
-    rev = "v${version}";
-    hash = "sha256-lcOZg5mlFPp04ZCm5GDhQfSwE2ahSmGhmdAw+pygK0A=";
-  };
+  inherit (import ./sources.nix { inherit fetchFromGitHub; })
+    pname
+    version
+    src
+    vendorHash
+    ;
 
-  frontend = buildNpmPackage {
-    pname = "memos-web";
-    inherit version;
-
-    src = "${src}/web";
-
-    npmDepsHash = "sha256-36UcHE98dsGvYQWLIc/xgP8Q0IyJ7la0Qoo3lZqUcmw=";
-
-    postPatch = ''
-      cp ${./package-lock.json} package-lock.json
-    '';
-
-    installPhase = ''
-      cp -r dist $out
-    '';
+  memos-protobuf = callPackage ./protobuf.nix { };
+  web = callPackage ./web.nix {
+    inherit memos-protobuf;
   };
 in
-buildGoModule rec {
-  pname = "memos";
-  inherit version src;
+buildGoModule {
+  inherit
+    pname
+    version
+    src
+    vendorHash
+    ;
 
-  # check will unable to access network in sandbox
+  # check will be unable to access network in sandbox
   doCheck = false;
-  vendorHash = "sha256-UM/xeRvfvlq+jGzWpc3EU5GJ6Dt7RmTbSt9h3da6f8w=";
 
   # Inject frontend assets into go embed
   prePatch = ''
-    rm -rf server/dist
-    cp -r ${frontend} server/dist
+    rm -rf server/router/frontend/dist
+    cp -r ${web}/share server/router/frontend/dist
   '';
 
   passthru = {
+    inherit web;
     updateScript = ./update.sh;
   };
 
   meta = with lib; {
     homepage = "https://usememos.com";
     description = "Lightweight, self-hosted memo hub";
-    maintainers = with maintainers; [ indexyz ];
+    maintainers = with maintainers; [
+      jlbribeiro
+    ];
     license = licenses.mit;
     mainProgram = "memos";
   };
