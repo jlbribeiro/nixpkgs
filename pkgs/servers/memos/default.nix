@@ -6,6 +6,9 @@
   buildGoModule,
   nodejs,
   pnpm,
+  grpc-gateway,
+  protoc-gen-go,
+  protoc-gen-go-grpc,
 }:
 
 let
@@ -19,9 +22,12 @@ let
   web = callPackage ./web.nix {
     inherit
       stdenv
+      fetchFromGitHub
       nodejs
       pnpm
-      fetchFromGitHub
+      grpc-gateway
+      protoc-gen-go
+      protoc-gen-go-grpc
       ;
   };
 in

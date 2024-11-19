@@ -1,0 +1,29 @@
+diff --git a/buf.gen.yaml b/buf.gen.yaml
+index df6063688b91..af13ce511f9a 100644
+--- a/buf.gen.yaml
++++ b/buf.gen.yaml
+@@ -8,19 +8,19 @@ managed:
+     - file_option: go_package_prefix
+       value: github.com/usememos/memos/proto/gen
+ plugins:
+-  - remote: buf.build/protocolbuffers/go
++  - plugin: go
+     out: gen
+     opt: paths=source_relative
+-  - remote: buf.build/grpc/go
++  - plugin: go-grpc
+     out: gen
+     opt: paths=source_relative
+-  - remote: buf.build/grpc-ecosystem/gateway
++  - plugin: grpc-gateway
+     out: gen
+     opt: paths=source_relative
+-  - remote: buf.build/grpc-ecosystem/openapiv2
++  - plugin: openapiv2
+     out: gen
+     opt: output_format=yaml,allow_merge=true
+-  - remote: buf.build/community/stephenh-ts-proto
++  - plugin: FIXME-stephenh-ts-proto
+     out: ../web/src/types/proto
+     opt:
+       - env=browser
