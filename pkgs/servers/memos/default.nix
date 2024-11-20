@@ -31,8 +31,8 @@ buildGoModule {
 
   # Inject frontend assets into go embed
   prePatch = ''
-    rm -rf server/dist
-    cp -r ${web} server/dist
+    rm -rf server/router/frontend/dist
+    cp -r ${web}/share server/router/frontend/dist
   '';
 
   passthru = {

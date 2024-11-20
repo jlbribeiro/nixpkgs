@@ -16,7 +16,7 @@ let
     protobufHash
     ;
 
-  protoc-gen-ts_proto = callPackage ./protoc-gen-ts_proto.nix { };
+  protoc-gen-ts_proto = callPackage ./protoc-gen-ts_proto { };
 in
 
 stdenv.mkDerivation (finalAttrs: {
@@ -36,15 +36,30 @@ stdenv.mkDerivation (finalAttrs: {
   ];
 
   buildPhase = ''
-    cd ./proto
+    pushd ./proto
     HOME=$TMPDIR buf generate
+    popd
   '';
 
   installPhase = ''
     runHook preInstall
 
-    # cp -r dist $out
-    false
+    # `buf generate` (cwd: ./proto) writes to:
+    # ../docs
+    # ../web/src/types/proto
+    # gen
+    copy_buf_path() {
+      local proto_out="$1"
+      local root_buf_path="proto/$proto_out"
+      local out_buf_path="$out/lib/$root_buf_path"
+
+      mkdir -p "$out_buf_path"
+      cp -r "./$root_buf_path"/{.,}* "$out_buf_path"
+    }
+
+    copy_buf_path "../docs"
+    copy_buf_path "../web/src/types/proto"
+    copy_buf_path "gen"
 
     runHook postInstall
   '';

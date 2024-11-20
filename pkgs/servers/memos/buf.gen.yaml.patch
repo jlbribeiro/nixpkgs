@@ -1,33 +1,29 @@
 diff --git a/proto/buf.gen.yaml b/proto/buf.gen.yaml
-index 48bec76e..32fb5c4c 100644
+index df606368..ec017be3 100644
 --- a/proto/buf.gen.yaml
 +++ b/proto/buf.gen.yaml
-@@ -6,23 +6,23 @@ managed:
-     except:
-       - buf.build/googleapis/googleapis
+@@ -8,19 +8,19 @@ managed:
+     - file_option: go_package_prefix
+       value: github.com/usememos/memos/proto/gen
  plugins:
--  - plugin: buf.build/protocolbuffers/go
-+  - plugin: go
+-  - remote: buf.build/protocolbuffers/go
++  - local: protoc-gen-go
      out: gen
-     opt:
-       - paths=source_relative
--  - plugin: buf.build/grpc/go
-+  - plugin: go-grpc
+     opt: paths=source_relative
+-  - remote: buf.build/grpc/go
++  - local: protoc-gen-go-grpc
      out: gen
-     opt:
-       - paths=source_relative
--  - plugin: buf.build/grpc-ecosystem/gateway
-+  - plugin: grpc-gateway
+     opt: paths=source_relative
+-  - remote: buf.build/grpc-ecosystem/gateway
++  - local: protoc-gen-grpc-gateway
      out: gen
-     opt:
-       - paths=source_relative
--  - plugin: buf.build/grpc-ecosystem/openapiv2
-+  - plugin: openapiv2
-     out: ../docs
+     opt: paths=source_relative
+-  - remote: buf.build/grpc-ecosystem/openapiv2
++  - local: protoc-gen-openapiv2
+     out: gen
      opt: output_format=yaml,allow_merge=true
-   # Build the TypeScript definitions for the web.
--  - plugin: buf.build/community/stephenh-ts-proto
-+  - plugin: ts_proto
+-  - remote: buf.build/community/stephenh-ts-proto
++  - local: protoc-gen-ts_proto
      out: ../web/src/types/proto
-     # reference: https://github.com/deeplay-io/nice-grpc/blob/master/packages/nice-grpc-web/README.md#using-ts-proto
      opt:
+       - env=browser
