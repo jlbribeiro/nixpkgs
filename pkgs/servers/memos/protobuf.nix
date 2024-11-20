@@ -1,5 +1,6 @@
 {
   stdenv,
+  callPackage,
   fetchFromGitHub,
   buf,
   grpc-gateway,
@@ -14,6 +15,8 @@ let
     src
     protobufHash
     ;
+
+  protoc-gen-ts_proto = callPackage ./protoc-gen-ts_proto.nix { };
 in
 
 stdenv.mkDerivation (finalAttrs: {
@@ -29,6 +32,7 @@ stdenv.mkDerivation (finalAttrs: {
     grpc-gateway
     protoc-gen-go
     protoc-gen-go-grpc
+    protoc-gen-ts_proto
   ];
 
   buildPhase = ''

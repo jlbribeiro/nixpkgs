@@ -14,7 +14,6 @@ let
     src
     pnpmDepsHash
     ;
-
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "${pname}-web";

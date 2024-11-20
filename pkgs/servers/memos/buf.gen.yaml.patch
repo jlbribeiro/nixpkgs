@@ -27,7 +27,7 @@ index 48bec76e..32fb5c4c 100644
      opt: output_format=yaml,allow_merge=true
    # Build the TypeScript definitions for the web.
 -  - plugin: buf.build/community/stephenh-ts-proto
-+  - plugin: FIXME-stephenh-ts-proto
++  - plugin: ts_proto
      out: ../web/src/types/proto
      # reference: https://github.com/deeplay-io/nice-grpc/blob/master/packages/nice-grpc-web/README.md#using-ts-proto
      opt:
