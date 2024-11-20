@@ -3,9 +3,8 @@
   fetchFromGitHub,
   nodejs,
   pnpm,
-  grpc-gateway,
-  protoc-gen-go,
-  protoc-gen-go-grpc,
+
+  memos-protobuf,
 }:
 
 let
@@ -15,6 +14,7 @@ let
     src
     pnpmDepsHash
     ;
+
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "${pname}-web";
@@ -22,17 +22,9 @@ stdenv.mkDerivation (finalAttrs: {
 
   sourceRoot = "${finalAttrs.src.name}/web";
 
-  patches = [
-    ./buf.gen.yaml.patch
-  ];
-
   nativeBuildInputs = [
     nodejs
     pnpm.configHook
-
-    grpc-gateway
-    protoc-gen-go
-    protoc-gen-go-grpc
   ];
 
   pnpmDeps = pnpm.fetchDeps {
@@ -46,6 +38,7 @@ stdenv.mkDerivation (finalAttrs: {
   };
 
   postBuild = ''
+    ls ${memos-protobuf}
     pnpm run build
   '';
 

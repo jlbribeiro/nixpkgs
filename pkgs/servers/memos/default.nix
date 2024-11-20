@@ -1,14 +1,8 @@
 {
-  stdenv,
   lib,
   callPackage,
   fetchFromGitHub,
   buildGoModule,
-  nodejs,
-  pnpm,
-  grpc-gateway,
-  protoc-gen-go,
-  protoc-gen-go-grpc,
 }:
 
 let
@@ -19,16 +13,9 @@ let
     vendorHash
     ;
 
+  memos-protobuf = callPackage ./protobuf.nix { };
   web = callPackage ./web.nix {
-    inherit
-      stdenv
-      fetchFromGitHub
-      nodejs
-      pnpm
-      grpc-gateway
-      protoc-gen-go
-      protoc-gen-go-grpc
-      ;
+    inherit memos-protobuf;
   };
 in
 buildGoModule {
